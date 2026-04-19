@@ -1,76 +1,115 @@
-...
-<script>
-    let totalTime;
-    let timeLeft;
-    let timerInterval;
-    let isPaused = false;
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iPad Style Timer Pro</title>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --gray-btn: #333333;
+            --orange-btn: #ff9f0a;
+            --green-btn: #30d158;
+            --red-btn: #ff453a;
+            --progress-color: var(--orange-btn);
+        }
 
-    // --- 音源の設定 ---
-    // ここにiPadのタイマー音に近いフリー音源を指定しています
-    const alarmSound = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
-    alarmSound.loop = true; // 止めるまで鳴らし続ける設定
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
 
-    // (中略: SVG設定やpopulateSelectなどは前回と同じ)
+        .container {
+            width: 400px;
+            text-align: center;
+        }
 
-    function startTimer() {
-        const h = parseInt(document.getElementById('hours').value);
-        const m = parseInt(document.getElementById('minutes').value);
-        const s = parseInt(document.getElementById('seconds').value);
-        
-        totalTime = (h * 3600) + (m * 60) + s;
-        timeLeft = totalTime;
+        /* 設定画面のスタイル */
+        .picker-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 60px;
+        }
 
-        if (totalTime <= 0) return;
+        .picker-container select {
+            background: transparent;
+            color: white;
+            border: none;
+            font-size: 32px;
+            font-weight: 300;
+            border-bottom: 2px solid #333;
+            appearance: none;
+            padding: 5px 10px;
+            outline: none;
+        }
 
-        // ブラウザの制限解除のため、開始時に一度無音で再生（おまじない）
-        alarmSound.play().then(() => {
-            alarmSound.pause();
-            alarmSound.currentTime = 0;
-        }).catch(e => console.log("Audio play blocked"));
+        /* カウントダウン画面のスタイル */
+        .timer-ui-container {
+            position: relative;
+            width: 350px;
+            height: 350px;
+            margin: 0 auto 50px auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
 
-        document.getElementById('setup-ui').style.display = 'none';
-        document.getElementById('timer-ui').style.display = 'block';
-        
-        setProgress(100); 
-        updateDisplay();
-        runInterval();
-    }
+        .progress-ring {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
 
-    function runInterval() {
-        timerInterval = setInterval(() => {
-            if (timeLeft > 0) {
-                timeLeft--;
-                updateDisplay();
-            } else {
-                clearInterval(timerInterval);
-                setProgress(0);
-                
-                // --- 音を鳴らす ---
-                alarmSound.play();
-                
-                // アラートが出てOKを押すまで鳴り続ける
-                setTimeout(() => {
-                    if(confirm("時間になりました！音を止めますか？")) {
-                        alarmSound.pause();
-                        alarmSound.currentTime = 0;
-                        resetTimer();
-                    }
-                }, 100);
-            }
-        }, 1000);
-    }
+        .progress-ring__circle-bg {
+            stroke: #222;
+        }
 
-    function resetTimer() {
-        clearInterval(timerInterval);
-        alarmSound.pause(); // リセット時にも音を止める
-        alarmSound.currentTime = 0;
-        isPaused = false;
-        document.getElementById('setup-ui').style.display = 'block';
-        document.getElementById('timer-ui').style.display = 'none';
-        document.getElementById('toggle-btn').innerText = "一時停止";
-        document.getElementById('toggle-btn').className = "btn btn-pause";
-        setProgress(100);
-    }
+        .progress-ring__circle {
+            stroke: var(--progress-color);
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1s linear;
+        }
 
-    // (togglePause関数などは前回と同じ)
-</script>
+        .timer-display {
+            font-size: 64px;
+            font-weight: 200;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ボタンのスタイル */
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+
+        .btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            font-size: 17px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.2s;
+        }
+
+        .btn:active {
+            opacity: 0.5;
+        }
+
+        .btn-cancel { background
