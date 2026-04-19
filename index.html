@@ -112,4 +112,156 @@
             opacity: 0.5;
         }
 
-        .btn-cancel { background
+        .btn-cancel { background-color: var(--gray-btn); color: white; }
+        .btn-start { background-color: #1c3d26; color: var(--green-btn); }
+        .btn-pause { background-color: #3d2e1c; color: var(--orange-btn); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="setup-ui">
+        <div class="picker-container">
+            <select id="hours"></select><span>時</span>
+            <select id="minutes"></select><span>分</span>
+            <select id="seconds"></select><span>秒</span>
+        </div>
+        <div class="controls">
+            <button class="btn btn-cancel" onclick="resetTimer()">リセット</button>
+            <button class="btn btn-start" onclick="startTimer()">開始</button>
+        </div>
+    </div>
+
+    <div id="timer-ui" style="display: none;">
+        <div class="timer-ui-container">
+            <svg class="progress-ring" width="350" height="350">
+                <circle class="progress-ring__circle-bg" stroke-width="8" fill="transparent" r="160" cx="175" cy="175"/>
+                <circle id="progress-circle" class="progress-ring__circle" stroke-width="8" fill="transparent" r="160" cx="175" cy="175"/>
+            </svg>
+            <div class="timer-display" id="display">00:00:00</div>
+        </div>
+        <div class="controls">
+            <button class="btn btn-cancel" onclick="resetTimer()">キャンセル</button>
+            <button id="toggle-btn" class="btn btn-pause" onclick="togglePause()">一時停止</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let totalTime;
+    let timeLeft;
+    let timerInterval;
+    let isPaused = false;
+
+    // アラーム音の設定（Google提供のフリー音源）
+    const alarmSound = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+    alarmSound.loop = true;
+
+    // SVGプログレスバーの設定
+    const circle = document.getElementById('progress-circle');
+    const radius = circle.r.baseVal.value;
+    const circumference = 2 * Math.PI * radius;
+    circle.style.strokeDasharray = `${circumference} ${circumference}`;
+    circle.style.strokeDashoffset = 0;
+
+    function setProgress(percent) {
+        const offset = circumference - (percent / 100 * circumference);
+        circle.style.strokeDashoffset = offset;
+    }
+
+    // 時間選択肢の生成
+    function populateSelect(id, max, defaultValue = 0) {
+        const select = document.getElementById(id);
+        for (let i = 0; i <= max; i++) {
+            let opt = document.createElement('option');
+            opt.value = i;
+            opt.innerHTML = i.toString().padStart(2, '0');
+            if (i === defaultValue) opt.selected = true;
+            select.appendChild(opt);
+        }
+    }
+
+    populateSelect('hours', 23);
+    populateSelect('minutes', 59, 5); // デフォルト5分
+    populateSelect('seconds', 59);
+
+    function updateDisplay() {
+        const h = Math.floor(timeLeft / 3600);
+        const m = Math.floor((timeLeft % 3600) / 60);
+        const s = timeLeft % 60;
+        document.getElementById('display').innerText = 
+            `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        
+        if (totalTime > 0) {
+            setProgress((timeLeft / totalTime) * 100);
+        }
+    }
+
+    function startTimer() {
+        const h = parseInt(document.getElementById('hours').value);
+        const m = parseInt(document.getElementById('minutes').value);
+        const s = parseInt(document.getElementById('seconds').value);
+        
+        totalTime = (h * 3600) + (m * 60) + s;
+        timeLeft = totalTime;
+
+        if (totalTime <= 0) return;
+
+        // 音声再生の制限を解除
+        alarmSound.play().then(() => { alarmSound.pause(); alarmSound.currentTime = 0; }).catch(() => {});
+
+        document.getElementById('setup-ui').style.display = 'none';
+        document.getElementById('timer-ui').style.display = 'block';
+        
+        setProgress(100);
+        updateDisplay();
+        runInterval();
+    }
+
+    function runInterval() {
+        timerInterval = setInterval(() => {
+            if (timeLeft > 0) {
+                timeLeft--;
+                updateDisplay();
+            } else {
+                clearInterval(timerInterval);
+                setProgress(0);
+                alarmSound.play();
+                setTimeout(() => {
+                    if(confirm("時間になりました！")) {
+                        resetTimer();
+                    }
+                }, 100);
+            }
+        }, 1000);
+    }
+
+    function togglePause() {
+        const btn = document.getElementById('toggle-btn');
+        if (isPaused) {
+            runInterval();
+            btn.innerText = "一時停止";
+            btn.className = "btn btn-pause";
+            isPaused = false;
+        } else {
+            clearInterval(timerInterval);
+            btn.innerText = "再開";
+            btn.className = "btn btn-start";
+            isPaused = true;
+        }
+    }
+
+    function resetTimer() {
+        clearInterval(timerInterval);
+        alarmSound.pause();
+        alarmSound.currentTime = 0;
+        isPaused = false;
+        document.getElementById('setup-ui').style.display = 'block';
+        document.getElementById('timer-ui').style.display = 'none';
+        document.getElementById('toggle-btn').innerText = "一時停止";
+        document.getElementById('toggle-btn').className = "btn btn-pause";
+    }
+</script>
+
+</body>
+</html>
